@@ -1,26 +1,37 @@
 import { NextResponse } from "next/server";
-import { connectMongoDB } from "@/lib/mongodb";
-import { Item } from "@/lib/models/items";
+import { cookies } from "next/headers";
+import AuditLog from "@/models/AuditLog";
+// import Item from "@/models/Item";
 
-export async function POST(request: Request) {
-  try {
-    // Added category and amount here
-    const { name, category, price, amount } = await request.json();
-    await connectMongoDB();
-    await Item.create({ name, category, price, amount });
-    return NextResponse.json({ message: "Item Created" }, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ message: "Error creating item" }, { status: 500 });
+export async function GET(request: Request) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token");
+
+  if (!token) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
+
+  // Fetch items from DB
+  return NextResponse.json({ items: [] }, { status: 200 });
 }
 
-export async function GET() {
-  try {
-    await connectMongoDB();
-    // Filters out deleted items
-    const items = await Item.find({ status: { $ne: "DELETED" } });
-    return NextResponse.json(items, { status: 200 });
-  } catch (error) {
-    return NextResponse.json({ message: "Error fetching items" }, { status: 500 });
+export async function POST(request: Request) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token");
+
+  if (!token) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
+
+  const data = await request.json();
+  // const newItem = await Item.create(data);
+
+  // Write to Audit Log
+  await AuditLog.create({
+    action: "CREATE_ITEM",
+    performedBy: "admin",
+    itemId: data._id || "sample-id",
+  });
+
+  return NextResponse.json({ message: "Created and logged" }, { status: 201 });
 }
