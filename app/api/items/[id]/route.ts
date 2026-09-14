@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Item } from "@/lib/models/items";
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // 1. Unwrap the params promise first
+    const { id } = await params;
+
     // Added category and amount here
     const { name, category, price, amount } = await request.json();
     await connectMongoDB();
-    await Item.findByIdAndUpdate(params.id, { name, category, price, amount });
+    
+    // 2. Use the resolved id
+    await Item.findByIdAndUpdate(id, { name, category, price, amount });
     return NextResponse.json({ message: "Item updated successfully" }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: "Error updating item" }, { status: 500 });
